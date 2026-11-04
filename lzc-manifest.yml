@@ -1,0 +1,98 @@
+application:
+  subdomain: crossdesk
+  multi_instance: false
+  # Clients connect straight to this box's IP:port over WSS, and the TLS cert is
+  # self-signed for that IP (see docs/DEPLOYMENT.md), so the platform domain
+  # cannot be used as the entry point. Signalling, the status API and the admin
+  # dashboard are all served on the signalling port; the password is injected on
+  # the login page instead of exposing everything without auth.
+  upstreams:
+    - location: /
+      backend: http://host.lzcapp:{{ .U.server_port }}
+  injects:
+    - id: crossdesk-admin-login-autofill
+      when:
+        - /admin
+      do:
+        - src: builtin://simple-inject-password
+          params:
+            user: "{{ .U.admin_username }}"
+            password: "{{ .U.admin_password }}"
+services:
+  crossdesk-server:
+    # upstream: crossdesk/crossdesk-server:v1.1.38
+    image: docker.1ms.run/crossdesk/crossdesk-server:v1.1.38
+    # Host networking is required: the TURN relay needs a wide UDP range
+    # (50000-60000) plus 3478, and clients are configured with the server IP.
+    network_mode: host
+    restart: unless-stopped
+    stop_grace_period: 20s
+    environment:
+      - EXTERNAL_IP={{ .U.external_ip }}
+      - CROSSDESK_SERVER_PORT={{ .U.server_port }}
+      - CROSSDESK_MAX_CONNECTIONS={{ .U.max_connections }}
+      - CROSSDESK_LOG_RETENTION_DAYS={{ .U.log_retention_days }}
+      - CROSSDESK_OFFLINE_RETENTION_DAYS={{ .U.offline_retention_days }}
+      - COTURN_PUBLIC_HOST={{ .U.external_ip }}
+      - COTURN_PORT={{ .U.turn_port }}
+      - COTURN_AUTH_SECRET={{ .U.coturn_auth_secret }}
+      - COTURN_REALM={{ .U.coturn_realm }}
+      - COTURN_CREDENTIAL_TTL_SECONDS={{ .U.credential_ttl_seconds }}
+      - ADMIN_USERNAME={{ .U.admin_username }}
+      - ADMIN_PASSWORD={{ .U.admin_password }}
+    binds:
+      - /lzcapp/var/data:/var/lib/crossdesk
+      - /lzcapp/var/log:/var/log/crossdesk
+  coturn:
+    # upstream: coturn/coturn:4.17.2-r0-debian
+    image: docker.1ms.run/coturn/coturn:4.17.2-r0-debian
+    network_mode: host
+    restart: unless-stopped
+    user: "0:0"
+    entrypoint:
+      - turnserver
+    depends_on:
+      - crossdesk-server
+    binds:
+      - /lzcapp/var/data/certs:/certs:ro
+      - /lzcapp/var/log/coturn:/var/log/coturn
+    command:
+      - -n
+      - --listening-port={{ .U.turn_port }}
+      - --relay-ip={{ .U.external_ip }}
+      - --external-ip={{ .U.external_ip }}
+      - --min-port={{ .U.min_port }}
+      - --max-port={{ .U.max_port }}
+      - --fingerprint
+      - --use-auth-secret
+      - --dtls
+      - --static-auth-secret={{ .U.coturn_auth_secret }}
+      - --realm={{ .U.coturn_realm }}
+      - --stateless-nonce-secret={{ .U.coturn_stateless_nonce_secret }}
+      - --log-file=/var/log/coturn/turn.log
+      - --no-stdout-log
+      - --new-log-timestamp
+      - --cli=false
+      - --no-multicast-peers
+      - --proc-user=nobody
+      - --proc-group=nogroup
+usage: |
+  CrossDesk Server 是 CrossDesk 远控的服务端：提供 WSS 信令与 STUN/TURN 中继，
+  帮助两端在 NAT 环境下建立连接。
+
+  使用步骤：
+    1. 安装时填写「外部 IP」——客户端要访问本机的公网 IP（TURN 必需，证书也按它签发）。
+    2. 客户端「设置 → 常规 → 自建服务配置」里填写该 IP 与信令端口，确认返回后勾选启用。
+    3. 两端必须使用同一台服务器。
+
+  管理后台（可选）：安装时同时填写管理员用户名与密码，即可在
+  https://<外部IP>:<信令端口>/admin 查看在线设备、活动会话与统计。
+  两个管理字段都留空则关闭后台。
+
+  说明：
+    - 本应用使用 host 网络：TURN 中继需要 3478 端口与 50000-60000 的 UDP 端口段。
+      这些端口由服务端直接监听，不经平台入口转发，因此请确保防火墙放行。
+    - 服务端使用自签证书（CN/SAN 为上面的外部 IP），客户端首次连接需要信任该证书；
+      也正因如此，跨网访问需直连 IP 而非平台域名。
+    - 本应用不挂载 docker.sock、不需要特权容器。
+    - 未做实机验证。

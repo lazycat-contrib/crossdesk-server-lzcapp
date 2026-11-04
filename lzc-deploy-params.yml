@@ -1,0 +1,143 @@
+params:
+  - id: external_ip
+    type: string
+    name: External IP
+    description: "Public IP that clients use to reach this server. Required by CrossDesk for TURN; leave blank to auto-detect on first start."
+    default_value: ""
+    optional: false
+
+  - id: coturn_auth_secret
+    type: secret
+    name: TURN auth secret
+    description: "Shared secret between CrossDesk Server and Coturn for issuing TURN credentials. Never share it with clients."
+    default_value: "$random(len=32)"
+    optional: false
+
+  - id: coturn_stateless_nonce_secret
+    type: secret
+    name: TURN nonce secret
+    description: "Keeps TURN credentials stable across restarts (avoids 438 re-auth round-trips)."
+    default_value: "$random(len=32)"
+    optional: false
+
+  - id: coturn_realm
+    type: string
+    name: TURN realm
+    description: "Coturn authentication realm."
+    default_value: "crossdesk"
+    optional: false
+
+  - id: server_port
+    type: string
+    name: Signalling port
+    description: "TCP port for WSS signalling, the HTTPS status API and the admin dashboard."
+    default_value: "9099"
+    optional: false
+
+  - id: turn_port
+    type: string
+    name: STUN/TURN port
+    description: "TCP/UDP port for STUN/TURN."
+    default_value: "3478"
+    optional: false
+
+  - id: min_port
+    type: string
+    name: TURN relay port start
+    description: "Start of the UDP range used for TURN relaying."
+    default_value: "50000"
+    optional: false
+
+  - id: max_port
+    type: string
+    name: TURN relay port end
+    description: "End of the UDP range used for TURN relaying."
+    default_value: "60000"
+    optional: false
+
+  - id: credential_ttl_seconds
+    type: string
+    name: TURN credential TTL (seconds)
+    description: "Lifetime of TURN credentials issued to clients (60-86400)."
+    default_value: "3600"
+    optional: false
+
+  - id: admin_username
+    type: string
+    name: Admin username
+    description: "Username for the optional admin dashboard at /admin. Leave both admin fields blank to disable it."
+    default_value: "admin"
+    optional: true
+
+  - id: admin_password
+    type: secret
+    name: Admin password
+    description: "Password for the admin dashboard. Leave blank (along with the username) to disable it."
+    default_value: "$random(len=20)"
+    optional: true
+
+  - id: log_retention_days
+    type: string
+    name: Log retention (days)
+    description: "How long operational and security logs are kept (1-3650)."
+    default_value: "185"
+    optional: false
+
+  - id: offline_retention_days
+    type: string
+    name: Offline device retention (days)
+    description: "How long an offline device record is kept before its ID, password digest and associations are deleted."
+    default_value: "180"
+    optional: false
+
+  - id: max_connections
+    type: string
+    name: Max connections
+    description: "Signalling capacity limit. Effective connections also depend on available file descriptors."
+    default_value: "8192"
+    optional: false
+
+locales:
+  zh:
+    external_ip:
+      name: 外部 IP
+      description: 客户端用来访问本机的公网 IP。TURN 必需；留空则在首次启动时自动探测。
+    coturn_auth_secret:
+      name: TURN 共享密钥
+      description: CrossDesk Server 与 Coturn 之间签发 TURN 凭据的共享密钥，切勿下发给客户端。
+    coturn_stateless_nonce_secret:
+      name: TURN nonce 密钥
+      description: 让 TURN 凭据在重启后保持稳定，避免 438 重认证往返。
+    coturn_realm:
+      name: TURN realm
+      description: Coturn 认证域。
+    server_port:
+      name: 信令端口
+      description: WSS 信令、HTTPS 状态接口与管理后台使用的 TCP 端口。
+    turn_port:
+      name: STUN/TURN 端口
+      description: STUN/TURN 使用的 TCP/UDP 端口。
+    min_port:
+      name: TURN 中继起始端口
+      description: TURN 中继使用的 UDP 端口段起点。
+    max_port:
+      name: TURN 中继结束端口
+      description: TURN 中继使用的 UDP 端口段终点。
+    credential_ttl_seconds:
+      name: TURN 凭据有效期（秒）
+      description: 签发给客户端的 TURN 凭据有效期（60-86400）。
+    admin_username:
+      name: 管理后台用户名
+      description: 管理后台 /admin 的用户名。两项管理字段都留空即关闭后台。
+    admin_password:
+      name: 管理后台密码
+      description: 管理后台密码。与用户名一起留空即关闭后台。
+    log_retention_days:
+      name: 日志保留天数
+      description: 运行与安全日志的保留天数（1-3650）。
+    offline_retention_days:
+      name: 离线设备保留天数
+      description: 设备离线多久后删除其 ID、密码摘要与关联关系。
+    max_connections:
+      name: 最大连接数
+      description: 信令容量上限。实际连接数还受可用文件描述符限制。
