@@ -29,9 +29,14 @@ images:
     target: service
     service: coturn
     source: coturn/coturn
-    channel: stable
+    channel: custom
     sort: semver
-    tag_regex: ^[0-9]+[.][0-9]+[.][0-9]+-r[0-9]+-debian$
+    # coturn publishes suffixed tags (4.17.2-r0-debian) that the stable/semver
+    # channel cannot resolve. Upstream pins this exact immutable revision, so
+    # match only it.
+    tag_regex: '^4[.]17[.]2-r0-debian$'
+    version_regex: '^(?P<version>4[.]17[.]2)-r0-debian$'
+    version_template: '{version}'
     delivery:
       mode: mirror
       require_digest_match: true
